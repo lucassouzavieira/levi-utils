@@ -1,33 +1,33 @@
 import csv
 
 
-class Levi:
+class PeakFitParser:
     """
     Levi pre-processing PeakFit output files class
     """
 
-    headers = [
-        'Peak',
-        'Amp-value', 'Amp-error',
-        'Ctr-value', 'Ctr-error',
-        'Wid-value', 'Wid-error'
-    ]
-
-    measures = [
-        'Amp', 'Ctr', 'Wid', 'Shpe'
-    ]
-
     values = [
-        'Value', 'Std-error', 't-value'
+        'value', 'error'
     ]
 
-    def __init__(self, filepath, encoding="utf-8", ):
+    def __init__(self, filepath, encoding="utf-8", measures=('Amp', 'Ctr', 'Wid')):
         """
         :param filepath: path to input file
         :param encoding: default input file encoding
+        :param measures: measures to get
         """
+        self.measures = list(measures)
         self.encoding = encoding
         self.data = {}
+
+        headers = ['Peak']
+
+        # Define headers
+        for measure in self.measures:
+            for value in self.values:
+                headers.append(measure + '-' + value)
+
+        self.headers = headers
 
         try:
             self.file = open(filepath)
@@ -51,19 +51,24 @@ class Levi:
         for key, peak in data.items():
             print(peak)
 
+            row = [key]
             if len(peak.items()):
-                row = [key,
-                       peak['Amp']['value'], peak['Amp']['error'],
-                       peak['Ctr']['value'], peak['Ctr']['error'],
-                       peak['Wid']['value'], peak['Wid']['error']]
+                for key, value in peak.items():
+                    if key not in self.measures:
+                        continue
 
-                writer.writerow(row)
+                    for v in self.values:
+                        row.append(value[v])
+
+            writer.writerow(row)
+            row = []
 
         del outputfile
         return True
 
     def parse(self):
         """
+        Parses the input file
         :return: an dict with classified peaks data
         """
         if not hasattr(self, 'file'):
@@ -90,8 +95,8 @@ class Levi:
                         if measure in splitted:
                             peakdata[measure] = {
                                 'value': float(splitted[1]),
-                                'std-error': float(splitted[2]),
-                                't-value': float(splitted[2]),
+                                'error': float(splitted[2]),
+                                'tvalue': float(splitted[3]),
                             }
 
                 if line is "" and peak is not 0:
