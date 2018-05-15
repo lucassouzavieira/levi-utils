@@ -70,49 +70,48 @@ class PeakFitParser:
         except Exception:
             return False
 
+    def parse(self):
+        """
+        Parses the input file
+        :return: an dict with classified peaks data
+        """
+        if not hasattr(self, 'file'):
+            print("File not defined for this instance")
+            return
 
-def parse(self):
-    """
-    Parses the input file
-    :return: an dict with classified peaks data
-    """
-    if not hasattr(self, 'file'):
-        print("File not defined for this instance")
-        return
+        verify = False
+        peakdata = {}
+        peak = 0
 
-    verify = False
-    peakdata = {}
-    peak = 0
+        for line in self.file.read().split("\n"):
+            try:
+                splitted = line.split(" ")
 
-    for line in self.file.read().split("\n"):
-        try:
-            splitted = line.split(" ")
+                if "Peak" in splitted and int(splitted[1]):
+                    peak = int(splitted[1])
+                    verify = True
+                    continue
 
-            if "Peak" in splitted and int(splitted[1]):
-                peak = int(splitted[1])
-                verify = True
+                if verify:
+                    splitted = list(filter(None, splitted))
+
+                    for measure in self.measures:
+                        if measure in splitted:
+                            peakdata[measure] = {
+                                'value': float(splitted[1]),
+                                'error': float(splitted[2]),
+                                'tvalue': float(splitted[3]),
+                            }
+
+                if line is "" and peak is not 0:
+                    verify = False
+                    if len(peakdata.items()):
+                        self.data[peak] = peakdata
+
+                    peakdata = {}
+
+            except ValueError:
+                peak = 0
                 continue
 
-            if verify:
-                splitted = list(filter(None, splitted))
-
-                for measure in self.measures:
-                    if measure in splitted:
-                        peakdata[measure] = {
-                            'value': float(splitted[1]),
-                            'error': float(splitted[2]),
-                            'tvalue': float(splitted[3]),
-                        }
-
-            if line is "" and peak is not 0:
-                verify = False
-                if len(peakdata.items()):
-                    self.data[peak] = peakdata
-
-                peakdata = {}
-
-        except ValueError:
-            peak = 0
-            continue
-
-    return self.data
+        return self.data
