@@ -1,5 +1,6 @@
 import csv
-
+from os import listdir
+from os.path import isfile, isdir, join
 
 class PeakFitParser:
     """
@@ -40,7 +41,9 @@ class PeakFitParser:
         :param filename: output file
         :return: True if the operation is done, False otherwise
         """
-        data = self.parse()
+        
+        if not len(self.data):
+            self.parse()
 
         try:
             outputfile = open(filename, "w+", newline="\n")
@@ -50,7 +53,7 @@ class PeakFitParser:
             writer.writerow(self.headers)
 
             # data
-            for key, peak in data.items():
+            for key, peak in self.data.items():
 
                 row = [key]
                 if len(peak.items()):
@@ -69,11 +72,21 @@ class PeakFitParser:
 
         except Exception:
             return False
+    
+    def get_data(self):
+        """
+        Returns the parsed data
+        :return: None
+        """
+        if not len(self.data):
+            self.parse()
+        
+        return self.data
 
     def parse(self):
         """
         Parses the input file
-        :return: an dict with classified peaks data
+        :return: None
         """
         if not hasattr(self, 'file'):
             print("File not defined for this instance")
@@ -114,4 +127,60 @@ class PeakFitParser:
                 peak = 0
                 continue
 
-        return self.data
+        return
+
+
+class PeakFitDirectory:
+    """
+    Levi process directory with a PeakFit output files
+    """
+
+    def __init__(self, dir = "."):
+        self.path = dir
+        if not isdir(self.path):
+            raise EnvironmentError
+        
+        self.files = [ifile for ifile in listdir(self.path) if isfile(join(self.path, ifile)) and ifile.lower().endswith(".prn")]
+        self.data = []
+
+    def process(self):
+        """
+        Gets data from each input file in directory
+        :return: None
+        """
+
+        for f in self.files:
+            parser = PeakFitParser(join(self.path, f))
+            self.data.append(parser.get_data())
+    
+    def export_files(self):
+        """
+        Exports each input file to column file format
+        :return: Post-processed files
+        """
+
+        for f in self.files:
+            parser = PeakFitParser(join(self.path, f))
+            parser.to_columns(join(self.path, f + ".txt"))
+
+    def export_peaks(self):
+        """
+        Exports the data grouping by Peak number
+        :return: Post-processed files
+        """
+
+        if not len(self.data):
+            self.process()
+        
+        data = {}
+        
+        for filedata in self.data:
+            for peak, peakdata in filedata:
+                if not peak in data: 
+                    data[peak] = []
+                
+                data[peak].append(peakdata)
+        
+        print(data)
+
+

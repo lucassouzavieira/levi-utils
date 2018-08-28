@@ -106,3 +106,6 @@ venv.bak/
 # Input/Output files
 *.txt
 main.py
+testing.py
+.vscode/
+*.prn
