@@ -135,12 +135,18 @@ class PeakFitDirectory:
     Levi process directory with a PeakFit output files
     """
 
+    measures = ('Amp', 'Ctr', 'Wid', 'Shpe')
+    headers = []
+    values = []
+
     def __init__(self, dir = "."):
         self.path = dir
         if not isdir(self.path):
             raise EnvironmentError
         
         self.files = [ifile for ifile in listdir(self.path) if isfile(join(self.path, ifile)) and ifile.lower().endswith(".prn")]
+        self.files.sort()
+        print(self.files)
         self.data = []
 
     def process(self):
@@ -150,8 +156,11 @@ class PeakFitDirectory:
         """
 
         for f in self.files:
-            parser = PeakFitParser(join(self.path, f))
+            parser = PeakFitParser(filepath=join(self.path, f), measures=self.measures)
             self.data.append(parser.get_data())
+        
+        self.headers = parser.headers
+        self.values = parser.values
     
     def export_files(self):
         """
@@ -175,12 +184,52 @@ class PeakFitDirectory:
         data = {}
         
         for filedata in self.data:
-            for peak, peakdata in filedata:
+            for peak in filedata.keys():
                 if not peak in data: 
                     data[peak] = []
                 
-                data[peak].append(peakdata)
+                data[peak].append(filedata[peak])
+
+        for peak in data.keys():
+            self.to_columns(data=data[peak], peakValue=peak)
+            break
+    
+    
+    def to_columns(self, data=None, peakValue=0):
+        """
+        Exports to an column file format
+        :param data: peak data
+        :param peakValue: peak value
+        :return: True if the operation is done, False otherwise
+        """
         
-        print(data)
+        if data is None or not len(self.data):
+            return
+        
+        try:
+            outputfile = open(join(self.path, str(peakValue) + "Peak-values.txt"), "w+", newline="\n")
+            writer = csv.writer(outputfile, delimiter="\t")
 
+            # Headers
+            writer.writerow(self.headers)
 
+            # data
+            for key, peak in enumerate(data):
+
+                row = [key]
+                if len(peak.items()):
+                    for key, value in peak.items():
+                        if key not in self.measures:
+                            continue
+
+                        for v in self.values:
+                            row.append("{:.8f}".format(value[v]))
+
+                writer.writerow(row)
+                row = []
+
+            del outputfile
+            return True
+
+        except Exception:
+            return False
